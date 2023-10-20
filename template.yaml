@@ -1,0 +1,107 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+# Description: >
+#   MROptimum SAM App
+
+#   This SAM template describes the entire MROptimum AWS Architecture
+
+
+Parameters:
+  CortexHost: 
+    Type: String
+    Description: cm cortex
+    Default: 'cancelit-env.eba-pmamcuv5.us-east-1.elasticbeanstalk.com'
+Globals:
+  Function:
+    Timeout: 60
+    MemorySize: 180
+    Environment:
+      Variables:
+        Host: !Ref CortexHost
+        loginapi: !Sub https://${CortexHost}/api/auth/login
+        logoutapi: !Sub https://${CortexHost}/api/auth/logout
+
+Resources:
+
+  CMAPI:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      # CORS configuration - this is open for development only and should be restricted in prod.
+      # See https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-property-httpapi-httpapicorsconfiguration.html   
+      CorsConfiguration:
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+        AllowHeaders:
+          - "*"   
+        AllowOrigins:
+          - "*"
+
+  ApplicationResourceGroup:
+    Type: AWS::ResourceGroups::Group
+    Properties:
+      Name:
+        Fn::Sub: ApplicationInsights-SAM-${AWS::StackName}
+      ResourceQuery:
+        Type: CLOUDFORMATION_STACK_1_0
+  ApplicationInsightsMonitoring:
+    Type: AWS::ApplicationInsights::Application
+    Properties:
+      ResourceGroupName:
+        Ref: ApplicationResourceGroup
+      AutoConfigurationEnabled: true
+  
+
+  LoginFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: >
+        This function creates an object defining the job configuration (<pipeline-id>.json) 
+        in the jobs bucket. It is triggered by POST /pipeline.
+      PackageType: Zip
+      CodeUri: cmr/
+      Handler: app.login
+      Runtime: python3.8
+      Events:
+        PostJobApiEvent:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref CMAPI
+            Path: /login
+            Method: post
+      Layers: 
+        - arn:aws:lambda:us-east-1:469266894233:layer:Requests_Layer:1
+
+  LogoutFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: >
+        This function runs the Mroptium computation (it is the muscle worker).
+        It should be triggered when an object is created in the jobs bucket.   
+      PackageType: Zip
+      CodeUri: cmr/
+      Handler: app.logout
+      Runtime: python3.8
+      Events:
+        PostJobApiEvent:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref CMAPI
+            Path: /logout
+            Method: post
+
+      Layers: 
+        - arn:aws:lambda:us-east-1:469266894233:layer:Requests_Layer:1
+
+
+Outputs:
+  LoginApi:
+    Description: API Gateway endpoint URL for Prod stage for Queue function
+    Value: !Sub "https://${CMAPI}.execute-api.${AWS::Region}.amazonaws.com/login"
+  LogoutApi:
+    Description: API Gateway endpoint URL for Prod stage for ReadData function
+    Value: !Sub "https://${CMAPI}.execute-api.${AWS::Region}.amazonaws.com/logout"
+  
