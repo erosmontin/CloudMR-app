@@ -6,11 +6,16 @@ Transform: AWS::Serverless-2016-10-31
 #   This SAM template describes the entire MROptimum AWS Architecture
 
 
+
 Parameters:
   CortexHost: 
     Type: String
     Description: cm cortex
     Default: 'cancelit-env.eba-pmamcuv5.us-east-1.elasticbeanstalk.com'
+  RoiBucketPName: 
+    Type: String
+    Description: rois bucket
+    Default: 'eros-cmr-rois'
 Globals:
   Function:
     Timeout: 60
@@ -20,8 +25,34 @@ Globals:
         Host: !Ref CortexHost
         loginapi: !Sub https://${CortexHost}/api/auth/login
         logoutapi: !Sub https://${CortexHost}/api/auth/logout
+        roisapi: !Sub https://${CortexHost}/api/roi
+        RoisBucketName: !Ref RoiBucketPName
 
 Resources:
+  RoiBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Ref RoiBucketPName
+      CorsConfiguration:
+        CorsRules:
+        - AllowedHeaders:
+            - "*"
+          AllowedMethods:
+            - GET
+            - PUT
+            - HEAD
+            - POST
+            - DELETE
+          AllowedOrigins:
+            - "*"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      OwnershipControls:
+        Rules:
+        - ObjectOwnership: BucketOwnerPreferred
 
   CMAPI:
     Type: AWS::Serverless::HttpApi
@@ -39,6 +70,9 @@ Resources:
           - "*"   
         AllowOrigins:
           - "*"
+        
+
+
 
   ApplicationResourceGroup:
     Type: AWS::ResourceGroups::Group
@@ -95,8 +129,64 @@ Resources:
 
       Layers: 
         - arn:aws:lambda:us-east-1:469266894233:layer:Requests_Layer:1
+  GetRoiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Zip
+      CodeUri: cmr/
+      Handler: app.getROISlist
+      Runtime: python3.8
+      Events:
+        DataReadApiEvent:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref CMAPI
+            Method: get
+            Path: /getrois
+            # only need the token bearer and the pipelineid
 
+ 
+      Policies:
+        - S3FullAccessPolicy:
+        #get the ROIbucket from the resource
+            # BucketName: !Ref RoiBucket
+            BucketName: !Ref RoiBucketPName
+        # This permission allows the Lambda function to request signed URLs
+        # for objects that will be publicly readable. Uncomment if you want this ACL.
 
+      Layers:
+        - arn:aws:lambda:us-east-1:469266894233:layer:Requests_Layer:1
+  UploadRoiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ROISignedURL/
+      Handler: app.handler
+      Runtime: nodejs16.x
+      Policies:
+        - S3FullAccessPolicy:
+            BucketName: !Ref RoiBucketPName
+        # This permission allows the Lambda function to request signed URLs
+        # for objects that will be publicly readable. Uncomment if you want this ACL.
+      Layers:
+        - !Ref ROIRequestFunctionLayer
+      Events:
+        UploadAssetAPI:
+          Type: HttpApi
+          Properties:
+            Path: /uploads
+            Method: post
+            ApiId: !Ref CMAPI
+
+  
+  ROIRequestFunctionLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: upload-node-layer
+      ContentUri: ROISignedURL/
+      CompatibleRuntimes:
+        - nodejs16.x
+    Metadata:
+      BuildMethod: nodejs16.x
 Outputs:
   LoginApi:
     Description: API Gateway endpoint URL for Prod stage for Queue function
@@ -104,4 +194,9 @@ Outputs:
   LogoutApi:
     Description: API Gateway endpoint URL for Prod stage for ReadData function
     Value: !Sub "https://${CMAPI}.execute-api.${AWS::Region}.amazonaws.com/logout"
-  
+  GetROISApi:
+    Description: API Gateway endpoint URL for Prod stage for ReadData function
+    Value: !Sub "https://${CMAPI}.execute-api.${AWS::Region}.amazonaws.com/getrois"
+  UploadData:
+    Description: "HTTP API endpoint URL to upload data"
+    Value: !Sub "https://${CMAPI}.execute-api.${AWS::Region}.amazonaws.com/uploads"
