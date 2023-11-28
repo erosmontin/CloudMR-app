@@ -62,3 +62,27 @@ def getROISlist(event, context):
     r2=requests.get(url,headers=getHeadersForRequestsWithToken(authorization_header))
     print(r2.text)
     return fixCORS(r2).text
+
+# def deleteFile(event, context):
+#     # get piepline_id from aws api gateway event get
+#     print("event")
+#     print(event['queryStringParameters'])
+    
+#     file_id = event['queryStringParameters']['file_id']
+#     if file_id is None:
+#         # return "pipeline_id is required" in a json format with anerror code status 
+#         return fixCORS({
+#             'statusCode':405 ,
+#             'body': json.dumps('file_id is required')
+#         })
+#     # Get the headers from the event object.
+#     headers = event['headers']
+#     # Get the authorization header.
+#     print(headers)
+#     authorization_header = headers['authorization']
+#     # Get the application and pipeline names.
+#     url=f'{deleteFileAPI}/{file_id}'
+#     print(url)
+#     r2=requests.get(url,headers=getHeadersForRequestsWithToken(authorization_header))
+#     print(r2.text)
+#     return fixCORS(r2).text
