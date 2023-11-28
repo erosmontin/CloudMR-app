@@ -23,6 +23,9 @@ def fixCORS(response):
     response.headers['Access-Control-Allow-Methods']='*' # This is required to allow CORS
     return response
 
+def createResponse(body):
+    return json.dumps(body)
+
 def login(event, context):
     r2=requests.post(loginAPI, data=event['body'], headers=getHeadersForRequests())
     return fixCORS(r2).text
@@ -43,6 +46,7 @@ def getROISlist(event, context):
     # get piepline_id from aws api gateway event get
     print("event")
     print(event['queryStringParameters'])
+    s3_client = boto3.client('s3')
     
     pipeline_id = event['queryStringParameters']['pipeline_id']
     if pipeline_id is None:
@@ -61,28 +65,15 @@ def getROISlist(event, context):
     print(url)
     r2=requests.get(url,headers=getHeadersForRequestsWithToken(authorization_header))
     print(r2.text)
-    return fixCORS(r2).text
-
-# def deleteFile(event, context):
-#     # get piepline_id from aws api gateway event get
-#     print("event")
-#     print(event['queryStringParameters'])
-    
-#     file_id = event['queryStringParameters']['file_id']
-#     if file_id is None:
-#         # return "pipeline_id is required" in a json format with anerror code status 
-#         return fixCORS({
-#             'statusCode':405 ,
-#             'body': json.dumps('file_id is required')
-#         })
-#     # Get the headers from the event object.
-#     headers = event['headers']
-#     # Get the authorization header.
-#     print(headers)
-#     authorization_header = headers['authorization']
-#     # Get the application and pipeline names.
-#     url=f'{deleteFileAPI}/{file_id}'
-#     print(url)
-#     r2=requests.get(url,headers=getHeadersForRequestsWithToken(authorization_header))
-#     print(r2.text)
-#     return fixCORS(r2).text
+    print(r2.json())
+    # print(r2.data)
+    rois = []
+    for data in r2.json():
+        location = json.loads(data['location'])
+        # Generate pre-signed URL for reading the object
+        url = s3_client.generate_presigned_url('get_object',
+                                                  Params=location,
+                                                  ExpiresIn=3600)
+        data['link'] = url
+        rois.append(data)
+    return createResponse(rois)
