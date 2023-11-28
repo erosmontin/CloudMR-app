@@ -76,6 +76,11 @@ const upload_data = async (event) => {
 
         console.log('Params: ', s3Params)
         const uploadURL = await s3.getSignedUrlPromise('putObject', s3Params)
+        const accessURL = await s3.getSignedUrlPromise('getObject', {
+            Bucket: process.env.RoisBucketName,
+            Key,
+            Expires: URL_EXPIRATION_SECONDS,
+        })
         // console.log(event.headers);
         // Post file metadata to cloudmrhub.com API
         const headers = getHeadersForRequestsWithToken(event.headers['authorization']);
@@ -108,6 +113,7 @@ const upload_data = async (event) => {
             },
             body: JSON.stringify({
                 upload_url: uploadURL,
+                access_url: accessURL,
                 response: response.data
             })
         };
