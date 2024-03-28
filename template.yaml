@@ -249,4 +249,4 @@ Outputs:
     Value: !Sub "https://${CMAPI}.execute-api.${AWS::Region}.amazonaws.com/uploads"
   ProfileGetAPI:
     Description: API Gateway endpoint URL for Prod stage for Profile Get
-    Value: !Sub "https://${CMAPI}.execute-api.${AWS::Region}.amazonaws.com/profile/"
+    Value: !Sub "https://${CMAPI}.execute-api.${AWS::Region}.amazonaws.com/profile"
