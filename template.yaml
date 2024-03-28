@@ -11,7 +11,7 @@ Parameters:
   CortexHost: 
     Type: String
     Description: cm cortex
-    Default: 'cancelit-env.eba-pmamcuv5.us-east-1.elasticbeanstalk.com'
+    Default: 'cancelit-env-1.eba-pmamcuv5.us-east-1.elasticbeanstalk.com'
   RoiBucketPName: 
     Type: String
     Description: rois bucket
@@ -129,34 +129,51 @@ Resources:
 
       Layers: 
         - arn:aws:lambda:us-east-1:469266894233:layer:Requests_Layer:1
+  
+  ProfileGetFunction:
+    # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: profileGetFunction/
+      Handler: app.handler
+      Runtime: nodejs16.x
+      Timeout: 30
+      MemorySize: 128
+      Events:
+        DownloadAssetAPI:
+          Type: HttpApi
+          Properties:
+            Path: /profile
+            Method: get
+            ApiId: !Ref CMAPI
 
-  # DeleteFileFunction:
-  #   Type: AWS::Serverless::Function
-  #   Properties:
-  #     PackageType: Zip
-  #     CodeUri: cmr/
-  #     Handler: app.deleteFile
-  #     Runtime: python3.8
-  #     Events:
-  #       DataReadApiEvent:
-  #         Type: HttpApi
-  #         Properties:
-  #           ApiId: !Ref CMAPI
-  #           Method: get
-  #           Path: /deletefile
-  #           # only need the token bearer and the pipelineid
+  DeleteFileFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Zip
+      CodeUri: cmr/
+      Handler: app.deleteROI
+      Runtime: python3.8
+      Events:
+        DataReadApiEvent:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref CMAPI
+            Method: get
+            Path: /deleteroi
+            # only need the token bearer and the pipelineid
 
  
-      # Policies:
-      #   - S3FullAccessPolicy:
-      #   #get the ROIbucket from the resource
-      #       # BucketName: !Ref RoiBucket
-      #       BucketName: !Ref RoiBucketPName
-      #   # This permission allows the Lambda function to request signed URLs
-      #   # for objects that will be publicly readable. Uncomment if you want this ACL.
+      Policies:
+        - S3FullAccessPolicy:
+        #get the ROIbucket from the resource
+            # BucketName: !Ref RoiBucket
+            BucketName: !Ref RoiBucketPName
+        # This permission allows the Lambda function to request signed URLs
+        # for objects that will be publicly readable. Uncomment if you want this ACL.
 
-      # Layers:
-      #   - arn:aws:lambda:us-east-1:469266894233:layer:Requests_Layer:1
+      Layers:
+        - arn:aws:lambda:us-east-1:469266894233:layer:Requests_Layer:1
 
 
   GetRoiFunction:
@@ -230,3 +247,6 @@ Outputs:
   UploadData:
     Description: "HTTP API endpoint URL to upload data"
     Value: !Sub "https://${CMAPI}.execute-api.${AWS::Region}.amazonaws.com/uploads"
+  ProfileGetAPI:
+    Description: API Gateway endpoint URL for Prod stage for Profile Get
+    Value: !Sub "https://${CMAPI}.execute-api.${AWS::Region}.amazonaws.com/profile/"

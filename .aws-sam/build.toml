@@ -8,7 +8,7 @@ architecture = "x86_64"
 handler = "app.login"
 manifest_hash = ""
 packagetype = "Zip"
-functions = ["LoginFunction", "LogoutFunction", "GetRoiFunction"]
+functions = ["LoginFunction", "LogoutFunction", "DeleteFileFunction", "GetRoiFunction"]
 
 [function_build_definitions.c92db6ef-638d-4a03-a386-30d56d8c55f0]
 codeuri = "/data/PROJECTS/Architecture/CloudMR-app/ROISignedURL"
@@ -18,6 +18,15 @@ handler = "app.handler"
 manifest_hash = ""
 packagetype = "Zip"
 functions = ["UploadRoiFunction"]
+
+[function_build_definitions.f76dba7c-26ca-4537-aef3-6e431d939746]
+codeuri = "/data/PROJECTS/Architecture/CloudMR-app/profileGetFunction"
+runtime = "nodejs16.x"
+architecture = "x86_64"
+handler = "app.handler"
+manifest_hash = ""
+packagetype = "Zip"
+functions = ["ProfileGetFunction"]
 
 [layer_build_definitions.94260e2f-5ef3-4702-bc03-a2f04a589136]
 layer_name = "ROIRequestFunctionLayer"

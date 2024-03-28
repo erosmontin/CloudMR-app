@@ -13,6 +13,12 @@ npm update
 cd ..
 
 ```
+
+# ROADMAP
+[ ] delete ROIs
+[x] upload ROIs
+[ ] modify ROIs
+
 then repeat build and deployment
 
 | api | info | route |
